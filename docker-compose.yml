@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  db:
+    image: mariadb:10.11
+    container_name: ejbca-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: ejbca
+      MYSQL_USER: ejbca
+      MYSQL_PASSWORD: ejbcapass
+    volumes:
+      - ejbca-db-data:/var/lib/mysql
+    networks:
+      - ejbca-net
+
+  ejbca:
+    image: primekey/ejbca-ce:latest
+    container_name: ejbca
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ejbca
+      DB_USER: ejbca
+      DB_PASSWORD: ejbcapass
+      CA_NAME: ManagementCA
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8443:8443"
+    restart: unless-stopped
+    networks:
+      - ejbca-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/ejbca/publicweb/healthcheck/ejbcahealth"]
+      interval: 15s
+      retries: 5
+
+volumes:
+  ejbca-db-data:
+
+networks:
+  ejbca-net:

@@ -1,0 +1,56 @@
+# EJBCA Lab Project .gitignore
+
+# Backup files
+*.tar.gz
+*.backup
+backup/
+
+# Database data directories
+datadbdir/
+data/
+ejbca-data/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Container volumes and runtime data
+volumes/
+runtime/
+
+# SSL certificates and keys (if any)
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+
+# Configuration files with sensitive data
+config/local.properties
+config/database.properties
