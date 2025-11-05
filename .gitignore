@@ -27,6 +27,7 @@ logs/
 .Trashes
 ehthumbs.db
 Thumbs.db
+*:Zone.Identifier
 
 # IDE files
 .vscode/
@@ -54,3 +55,67 @@ runtime/
 # Configuration files with sensitive data
 config/local.properties
 config/database.properties
+
+# Terraform files
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.*
+.terraform/
+.terraform.lock.hcl
+*.tfplan
+tfplan
+terraform.tfstate.d/
+
+# EJBCA installation files
+*.zip
+ejbca_*.zip
+ejbca_ee_*.zip
+ejbca_ce_*.zip
+wildfly-*.zip
+wildfly-*.tar.gz
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Docker/Podman
+docker-compose.override.yml
+.dockerignore
+
+# Installation artifacts
+downloads/
+install/
+*.sh.bak
+*.sh.old
+
+# Build and compiled files
+*.class
+*.jar
+*.war
+*.ear
+target/
+build/
+dist/
+
+# WildFly runtime
+wildfly/
+standalone/log/
+standalone/data/
+standalone/tmp/
+standalone/deployments/*.war
+standalone/deployments/*.ear
+standalone/deployments/*.jar
+standalone/deployments/*.deployed
+standalone/deployments/*.failed
+standalone/deployments/*.isdeploying
+standalone/deployments/*.pending
+
+# MariaDB/MySQL data
+mysql/
+mariadb/
+*.sql.bak
+*.sql.gz

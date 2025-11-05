@@ -1,0 +1,147 @@
+EJBCA 9.2.0 eIDAS Installation on Ubuntu (Final Working Version with MariaDB + SoftHSM)
+=======================================================================
+
+1. Create system user ejbca (run as root)
+-----------------------------------------
+sudo useradd -r -m -d /opt/ejbca -s /bin/bash ejbca
+sudo chown -R ejbca:ejbca /opt/ejbca
+
+2. Install dependencies (root)
+------------------------------
+sudo apt update
+sudo apt install -y openjdk-17-jdk ant unzip mariadb-server wget softhsm2
+
+3. Prepare directories (root)
+-----------------------------
+sudo mkdir -p /opt/ejbca/wildfly
+sudo mkdir -p /opt/ejbca/src
+sudo chown -R ejbca:ejbca /opt/ejbca
+
+4. Configure and start MariaDB (root)
+-------------------------------------
+sudo systemctl enable mariadb
+sudo systemctl start mariadb
+sudo mysql_secure_installation
+
+Connect to MariaDB:
+sudo mysql -u root -p
+
+Create EJBCA database and user:
+CREATE DATABASE ejbca CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'ejbca'@'localhost' IDENTIFIED BY 'ChangeMe123!';
+GRANT ALL PRIVILEGES ON ejbca.* TO 'ejbca'@'localhost';
+FLUSH PRIVILEGES;
+exit;
+
+5. Download and extract WildFly 35.0.1.Final (as ejbca)
+-------------------------------------------------------
+sudo -u ejbca bash <<EOF
+cd /opt/ejbca/wildfly
+wget https://github.com/wildfly/wildfly/releases/download/35.0.1.Final/wildfly-35.0.1.Final.tar.gz
+tar -xzf wildfly-35.0.1.Final.tar.gz
+chown -R ejbca:ejbca wildfly-35.0.1.Final
+EOF
+
+6. Set environment variables (as ejbca)
+---------------------------------------
+echo 'export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64' >> /home/ejbca/.bashrc
+echo 'export APPSRV_HOME=/opt/ejbca/wildfly/wildfly-35.0.1.Final' >> /home/ejbca/.bashrc
+echo 'export EJBCA_HOME=/opt/ejbca/src/ejbca_ee_9_2_0_eIDAS' >> /home/ejbca/.bashrc
+source /home/ejbca/.bashrc
+
+7. Unpack EJBCA source (as ejbca)
+---------------------------------
+cd /opt/ejbca/src
+unzip /path/to/ejbca_ee_9_2_0_eIDAS.zip
+mv ejbca_ee_9_2_0_eIDAS app
+ln -snf /opt/ejbca/src/app /opt/ejbca/src/ejbca_ee_9_2_0_eIDAS
+chown -R ejbca:ejbca /opt/ejbca/src
+
+8. Configure WildFly Remoting (as ejbca)
+----------------------------------------
+$APPSRV_HOME/bin/jboss-cli.sh --connect '/subsystem=remoting/http-connector=http-remoting-connector:write-attribute(name=connector-ref,value=remoting)'
+$APPSRV_HOME/bin/jboss-cli.sh --connect '/socket-binding-group=standard-sockets/socket-binding=remoting:add(port=4447,interface=management)'
+$APPSRV_HOME/bin/jboss-cli.sh --connect '/subsystem=undertow/server=default-server/http-listener=remoting:add(socket-binding=remoting,enable-http2=true)'
+$APPSRV_HOME/bin/jboss-cli.sh --connect ':reload'
+
+Wait until reload finishes:
+$APPSRV_HOME/bin/jboss-cli.sh --connect --command=":read-attribute(name=server-state)"
+Expected output: "running"
+
+Verify ports:
+sudo ss -tlnp | grep -E '8080|8443|9990|4447'
+
+9. Start WildFly (as ejbca)
+---------------------------
+nohup $APPSRV_HOME/bin/standalone.sh > /home/ejbca/wildfly35.log 2>&1 &
+sleep 15
+ss -tlnp | grep -E '8080|8443|9990|4447'
+
+10. Configure MariaDB JDBC driver (as ejbca)
+--------------------------------------------
+cd $APPSRV_HOME/standalone/deployments
+wget https://repo1.maven.org/maven2/org/mariadb/jdbc/mariadb-java-client/3.3.3/mariadb-java-client-3.3.3.jar
+
+Test connection:
+$APPSRV_HOME/bin/jboss-cli.sh --connect --command="data-source test-connection-in-pool --name=EjbcaDS"
+Should return: true
+
+10a. Install and configure SoftHSM2
+-----------------------------------
+(root)
+sudo apt install -y softhsm2
+
+Check token storage location:
+softhsm2-util --show-slots
+Example: /var/lib/softhsm/tokens/
+
+Initialize token (as ejbca):
+softhsm2-util --init-token --slot 0 --label ejbcaToken --pin 1234 --so-pin 123456
+
+If slot 0 is in use:
+softhsm2-util --init-token --slot 1 --label ejbcaToken --pin 1234 --so-pin 123456
+
+Locate library path:
+find /usr/lib -name "libsofthsm2.so"
+
+Example path:
+ /usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so
+
+10b. Configure EJBCA to use SoftHSM
+-----------------------------------
+Edit properties file:
+nano $EJBCA_HOME/conf/ejbca.properties
+
+Find and set:
+ca.token.classpath=org.cesecore.keys.token.Pkcs11CryptoToken
+ca.token.name=SoftHSM
+ca.token.pin=1234
+ca.token.p11.lib=/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so
+ca.token.p11.slot=0
+
+Save and exit.
+
+11. Build and initialize EJBCA (as ejbca)
+-----------------------------------------
+cd $EJBCA_HOME
+ant clean deployear
+ant runinstall
+
+Expected: BUILD SUCCESSFUL
+
+12. Verify web interfaces (any user)
+------------------------------------
+https://127.0.0.1:8443/ejbca/adminweb
+https://127.0.0.1:8443/ejbca/ra
+
+13. Import SuperAdmin certificate
+---------------------------------
+File location:
+/opt/ejbca/src/ejbca_ee_9_2_0_eIDAS/p12/superadmin.p12
+
+Import into browser certificate storage to access adminweb.
+
+14. Done
+--------
+EJBCA 9.2 successfully installed and initialized on WildFly 35 with MariaDB and SoftHSM2.
+All services are listening on ports 8080, 8443, 9990, and 4447.
