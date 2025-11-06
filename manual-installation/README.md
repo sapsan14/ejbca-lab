@@ -359,6 +359,8 @@ softhsm2-util --show-slots
 
 ## 🔧 Troubleshooting
 
+> 📖 **For detailed troubleshooting guide covering JNDI issues, mTLS configuration, and Elytron setup, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md)**
+
 ### WildFly Won't Start
 
 1. Check Java version: `java -version` (should be 17)
